@@ -178,6 +178,7 @@ def main(args):
 
 def make_policy(policy_class, policy_config):
     if policy_class == 'ACT':
+        print("policy_config: ", )
         policy = ACTPolicy(policy_config)
     elif policy_class == 'CNNMLP':
         policy = CNNMLPPolicy(policy_config)
@@ -538,9 +539,8 @@ def train_bc(train_dataloader, val_dataloader, config):
     eval_every = config['eval_every']
     validate_every = config['validate_every']
     save_every = config['save_every']
-
     set_seed(seed)
-
+    print(policy_config)
     policy = make_policy(policy_class, policy_config)
     if config['load_pretrain']:
         loading_status = policy.deserialize(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))
