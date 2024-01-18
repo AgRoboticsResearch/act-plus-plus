@@ -65,6 +65,7 @@ def get_args_parser():
     parser.add_argument('--temporal_agg', action='store_true')
     
     parser.add_argument('--use_vq', action='store_true')
+    parser.add_argument('--vq', action='store_true')
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class', required=False)
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim', required=False)
     parser.add_argument('--load_pretrain', action='store_true', default=False)
@@ -89,6 +90,7 @@ def build_ACT_model_and_optimizer(args_override):
     # args = parser.parse_args()
     print("DETR Args: ", args)
     for k, v in args_override.items():
+        # print("key ", k, "value ", v)
         setattr(args, k, v)
     print("ACT Args: ", args)
     model = build_ACT_model(args)
