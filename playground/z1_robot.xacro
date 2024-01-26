@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+
+<robot name="z1_description" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <link name="world"/>
+
+    <joint name="base_static_joint" type="fixed">
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="world"/>
+        <child link="link00"/>
+    </joint>
+
+    <link name="link00">
+    </link>
+
+    <joint name="joint1" type="revolute">
+        <origin rpy="0 0 0" xyz="0 0 0.0585"/>
+        <parent link="link00"/>
+        <child link="link01"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="30" velocity="3.1415" lower="-2.617994" upper="2.617994"/>
+    </joint>
+
+    <link name="link01">
+    </link>
+
+    <joint name="joint2" type="revolute">
+        <origin rpy="0 0 0" xyz="0 0 0.045"/>
+        <parent link="link01"/>
+        <child link="link02"/>
+        <axis xyz="0 1 0"/>
+        <limit effort="60" velocity="3.1415" lower="0" upper="2.9670597283903605"/>
+    </joint>
+
+    <link name="link02">
+    </link>
+
+    <joint name="joint3" type="revolute">
+        <origin rpy="0 0 0" xyz="-0.35 0 0"/>
+        <parent link="link02"/>
+        <child link="link03"/>
+        <axis xyz="0 1 0"/>
+        <limit effort="30" velocity="3.1415" lower="-2.8797932657906435" upper="0"/>
+    </joint>
+
+    <link name="link03">
+    </link>
+
+    <joint name="joint4" type="revolute">
+        <origin rpy="0 0 0" xyz="0.218 0 0.057"/>
+        <parent link="link03"/>
+        <child link="link04"/>
+        <axis xyz="0 1 0"/>
+        <limit effort="30" velocity="3.1415" lower="-1.5184364492350666" upper="1.5184364492350666"/>
+    </joint>
+
+    <link name="link04">
+    </link>
+
+    <joint name="joint5" type="revolute">
+        <origin rpy="0 0 0" xyz="0.07 0.0 0.0"/>
+        <parent link="link04"/>
+        <child link="link05"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="30" velocity="3.1415" lower="-1.343903524035633" upper="1.343903524035633"/>
+    </joint>
+
+    <link name="link05">
+    </link>
+
+    <joint name="joint6" type="revolute">
+        <origin rpy="0 0 0" xyz="0.0492 0.0 0.0"/>
+        <parent link="link05"/>
+        <child link="link06"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="30" velocity="3.1415" lower="-2.792526803190927" upper="0"/>
+    </joint>
+
+    <link name="link06">
+    </link>
+
+</robot>
