@@ -12,6 +12,15 @@ TASK_CONFIGS = {
     },
 
 }
+TASK_CONFIGS = {
+    'act_demo_z1_push_random_red':{
+        'dataset_dir': DATA_DIR + '/act_demo_z1_push_random_red',
+        'num_episodes': 50,
+        'episode_len': 200,
+        'camera_names': ['wrist']
+    },
+
+}
 ### Z1 envs fixed constants
 DT = 0.033333
 FPS = 30
