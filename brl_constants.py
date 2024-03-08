@@ -10,7 +10,7 @@ TASK_CONFIGS = {
         'episode_len': 400,
         'camera_names': ['wrist']
     },
-    'act_demo_z1_push_random_red':{
+    'act_demo_z1_push_random_red':{ 
         'dataset_dir': DATA_DIR + '/act_demo_z1_push_random_red',
         'num_episodes': 50,
         'episode_len': 200,
@@ -19,7 +19,7 @@ TASK_CONFIGS = {
     'act_demo_real_z1_push_sb':{
         'dataset_dir': DATA_DIR + '/act_demo_real_z1_push_sb',
         'num_episodes': 50,
-        'episode_len': 200,
+        'episode_len': 900,
         'camera_names': ['wrist']
     }
 }
