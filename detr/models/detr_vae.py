@@ -270,7 +270,7 @@ def build_encoder(args):
 
 
 def build(args):
-    state_dim = 6 # TODO hardcode
+    state_dim = args.state_dim
 
     # From state
     # backbone = None # from state for now, no need for conv nets

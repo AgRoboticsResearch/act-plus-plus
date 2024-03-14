@@ -21,6 +21,12 @@ TASK_CONFIGS = {
         'num_episodes': 50,
         'episode_len': 900,
         'camera_names': ['wrist']
+    },
+    'act_demo_scara':{
+        'dataset_dir': DATA_DIR + '/act_demo_scara',
+        'num_episodes': 50,
+        'episode_len': 300,
+        'camera_names': ['wrist']
     }
 }
 ### Z1 envs fixed constants
