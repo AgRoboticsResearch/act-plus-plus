@@ -23,9 +23,9 @@ TASK_CONFIGS = {
         'camera_names': ['wrist']
     },
     'act_demo_scara':{
-        'dataset_dir': DATA_DIR + '/act_demo_scara',
+        'dataset_dir': DATA_DIR + '/act_demo_scara_whiteboard_pick_one',
         'num_episodes': 50,
-        'episode_len': 300,
+        'episode_len': 350,
         'camera_names': ['wrist']
     }
 }

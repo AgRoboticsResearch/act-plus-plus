@@ -154,7 +154,6 @@ def get_norm_stats(dataset_path_list):
 
     for dataset_path in dataset_path_list:
         try:
-            print("debug1: ",dataset_path)
             with h5py.File(dataset_path, 'r') as root:
                 qpos = root['/observations/qpos'][()]
                 if '/observations/qvel' in root:
@@ -200,7 +199,7 @@ def get_norm_stats(dataset_path_list):
 
 def find_all_hdf5(dataset_dir, skip_mirrored_data):
     hdf5_files = []
-    for root, dirs, files in os.walk(dataset_dir):
+    for root, dirs, files in os.walk(dataset_dir, followlinks=True):
         for filename in fnmatch.filter(files, '*.hdf5'):
             if 'features' in filename: continue
             if skip_mirrored_data and 'mirror' in filename:
