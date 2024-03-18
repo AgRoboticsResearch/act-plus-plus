@@ -99,7 +99,11 @@ class EpisodicDataset(torch.utils.data.Dataset):
             # new axis for different cameras
             all_cam_images = []
             for cam_name in self.camera_names:
-                all_cam_images.append(image_dict[cam_name])
+                if len(image_dict[cam_name].shape) == 2:
+                    gary_to_rgb = np.dstack([image_dict[cam_name]] * 3)
+                    all_cam_images.append(gary_to_rgb)
+                else:
+                    all_cam_images.append(image_dict[cam_name])
             all_cam_images = np.stack(all_cam_images, axis=0)
 
             # construct observations
@@ -139,7 +143,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
             qpos_data = (qpos_data - self.norm_stats["qpos_mean"]) / self.norm_stats["qpos_std"]
 
-        except:
+        except Exception as e:
+            print(e)
             print(f'Error loading {dataset_path} in __getitem__')
             quit()
 
