@@ -31,6 +31,10 @@ class EpisodicDataset(torch.utils.data.Dataset):
             self.augment_images = True
         else:
             self.augment_images = False
+
+        # self.augment_images = True
+        print("augment_images: ", self.augment_images)
+        
         self.transformations = None
         self.__getitem__(0) # initialize self.is_sim and self.transformations
         self.is_sim = False
@@ -264,8 +268,9 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     batch_sampler_train = BatchSampler(batch_size_train, train_episode_len_l, sample_weights)
     batch_sampler_val = BatchSampler(batch_size_val, val_episode_len_l, None)
 
-    # print(f'train_episode_len: {train_episode_len}, val_episode_len: {val_episode_len}, train_episode_ids: {train_episode_ids}, val_episode_ids: {val_episode_ids}')
-
+    print(f'train_episode_len: {train_episode_len}, val_episode_len: {val_episode_len}, train_episode_ids: {train_episode_ids}, val_episode_ids: {val_episode_ids}')
+    for id in val_episode_ids:
+        print("val data: ", dataset_path_list[id])
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
     val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)

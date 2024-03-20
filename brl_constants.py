@@ -3,6 +3,7 @@ import os
 
 ### Task parameters
 DATA_DIR = '/mnt/data1/act'
+
 TASK_CONFIGS = {
     'act_demo_z1_push_red':{
         'dataset_dir': DATA_DIR + '/act_demo_z1_push_red',
@@ -33,6 +34,24 @@ TASK_CONFIGS = {
         'num_episodes': 50,
         'episode_len': 350,
         'camera_names': ['wrist', 'wrist_infra2']
+    },
+    'act_demo_scara_up_down_cam':{
+        'dataset_dir': DATA_DIR + '/act_demo_scara_whiteboard_updown_pick_one',
+        'num_episodes': 50,
+        'episode_len': 350,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+    'act_demo_scara_leaf_block':{
+        'dataset_dir': DATA_DIR + '/act_demo_scara_whiteboard_pick_under_leaf',
+        'num_episodes': 50,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+    'act_demo_scara_fruit_block':{
+        'dataset_dir': DATA_DIR + '/train-act-scara-fruit-block',
+        'num_episodes': 50,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
     }
 }
 ### Z1 envs fixed constants
