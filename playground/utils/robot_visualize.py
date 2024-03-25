@@ -82,7 +82,7 @@ def plot_robot(poses):
     """
     Plot the robot in 3D space using matplotlib.
     """
-    fig = plt.figure()
+    fig = plt.figure(figsize=(5, 5))
     ax = fig.add_subplot(111, projection='3d')
 
     # Loop over all poses
@@ -109,7 +109,8 @@ def plot_robot(poses):
     ax.set_zlabel('Z (m)')
 
     # Display the plot
-    plt.show()
+    # plt.show()
+    return ax
 
 
 def plot_robot_2d_xy(poses):
