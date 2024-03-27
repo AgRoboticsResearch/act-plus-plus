@@ -2,7 +2,9 @@ import PyKDL as kdl
 import kdl_parser_py.urdf
 import numpy as np
 import matplotlib.pyplot as plt
-
+import transformation as trans
+import cv2 as cv
+import projections as proj
 
 def joint_states_to_jnt_array(joint_states):
     # Convert joint states to a KDL JntArray
@@ -141,3 +143,120 @@ def plot_robot_2d_xy(poses):
 
     # Display the plot
     plt.show()
+
+def get_colormap_color(value, colormap_code=cv.COLORMAP_JET):
+  """
+  Maps a value to a color using the specified colormap.
+
+  Args:
+      value (float): Value to be mapped (0.0 to 1.0).
+      colormap_code (int, optional): OpenCV colormap code. Defaults to cv.COLORMAP_JET.
+
+  Returns:
+      tuple: RGB color tuple.
+  """
+  cmap = cv.applyColorMap(np.array([[value * 255]], dtype=np.uint8), colormap_code)
+  return tuple(cmap[0][0])
+
+def plot_robot_2d_xy_batch(link_poses_list):
+    """
+    Plot the robot in 2d x-y space using matplotlib.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    for i, link_poses in enumerate(link_poses_list):
+        # Loop over all poses
+        prev_x, prev_y, prev_z = None, None, None
+        for name, pose in link_poses:
+            # Extract the x, y, and z coordinates from the pose
+            x, y, z = pose.p[0], pose.p[1], pose.p[2]
+            
+            # Plot the point on the axes
+            ax.scatter(x, y, c='r')
+            
+            # If it's not the first point, draw a line from the previous point to the current point
+            if prev_x is not None:
+                ax.plot([prev_x, x], [prev_y, y], c='r')
+            prev_x, prev_y, prev_z = x, y, z
+    ax.set_ylim([-0.5, 0.1])
+    ax.set_xlim([-0.01, 0.6])
+
+    # axis label
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+
+def get_camera_poses(vis_actions, fk_solver, chain):
+    link_poses_list = []
+    ee_poses = []
+    ee_poses_raw = []
+    for i in range(0, len(vis_actions), 1):
+        vis_action = vis_actions[i]
+        joint_states = joint_states_to_jnt_array(vis_action[:4])
+        link_poses = get_poses(fk_solver, chain, joint_states)
+        link_poses_list.append(link_poses)
+        ee_poses.append([link_poses[-1][1].p[0], link_poses[-1][1].p[1], link_poses[-1][1].p[2]])
+        ee_poses_raw.append(link_poses[-1][1])
+    ee_poses = np.asarray(ee_poses)
+    return ee_poses, ee_poses_raw, link_poses_list
+
+def get_camera_in_world_and_init(ee_poses_raw):
+    transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(ee_poses_raw[0])
+    ee_in_world_init = transformation_matrix
+    world_T_init = np.linalg.inv(ee_in_world_init)
+
+    ee_in_world_all = []
+    ee_in_init_all = []
+    ee_in_init_all_pos = []
+    ee_in_world_all_pos = []
+    for ee_pose in ee_poses_raw:
+        ee_in_world_all_pos.append([ee_pose.p[0], ee_pose.p[1], ee_pose.p[2], 1])
+        ee_in_world, _, _= trans.kdl_frame_to_mat(ee_pose)
+        ee_in_world_all.append(ee_in_world)
+        ee_in_init = world_T_init.dot(ee_in_world)
+        ee_in_init_all.append(ee_in_init)
+        ee_in_init_all_pos.append(ee_in_init[:3, 3])
+        
+        # print("ee rpy: ", tf.euler_from_matrix(ee_in_init, 'rxyz'))
+
+    ee_in_init_all_pos = np.asarray(ee_in_init_all_pos)
+    ee_in_world_all_pos = np.asarray(ee_in_world_all_pos)
+    return  ee_in_init_all_pos, ee_in_world_all_pos
+
+def pts_cam_to_opt(ee_pts_cam):
+    ee_pts_opt = ee_pts_cam.copy()
+    ee_pts_opt = ee_pts_opt[:, [1, 2, 0]]
+    ee_pts_opt[:, 2] = ee_pts_opt[:, 2]
+    ee_pts_opt[:, 0] = -ee_pts_opt[:, 0]
+    ee_pts_opt[:, 1] = -ee_pts_opt[:, 1]
+    return ee_pts_opt
+
+def paint_action_in_image(img_plot, vis_actions, proj_mat, fk_solver, chain, save_path=None, plt_fig_ax=None, title=""):
+    if plt_fig_ax is None:
+        fig, ax = plt.subplots()  # Create a single figure and axis
+    else:
+        fig, ax = plt_fig_ax
+
+    ax.cla()
+    cam_poses, cam_poses_raw, link_poses_list = get_camera_poses(vis_actions, fk_solver, chain)
+    cam_pts_init, cam_in_world_all_pos = get_camera_in_world_and_init(cam_poses_raw)
+    # cam_pts_init to ee_pts_cam (ee_pts_init, init is the same as cam)
+    camera_T_ee = trans.states2SE3([0.12, -0.008, -0.0485, 0, 0, 0])
+    ee_pts_cam = camera_T_ee.dot(trans.xyz2homo(cam_pts_init).T).T[:,: 3]
+    ee_pts_opt = pts_cam_to_opt(ee_pts_cam)
+    uvs = proj.project_point_to_image(ee_pts_opt, proj_mat)
+    ax.imshow(cv.cvtColor(img_plot, cv.COLOR_BGR2RGB))
+    ax.scatter(uvs[:, 0], uvs[:, 1], c=range(len(uvs)), s=10)
+    # limit the axis to the image shape
+    ax.set_xlim([0, img_plot.shape[1]])
+    ax.set_ylim([img_plot.shape[0], 0])
+    # turn off the axis
+    ax.axis('off')
+    # ax.colorbar()
+    # save the image
+    plt.title(title)
+    plt.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, format='jpg')
+    else:
+        fig.show()

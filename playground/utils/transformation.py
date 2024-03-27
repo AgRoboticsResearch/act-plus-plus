@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import transformations as tf
 
 #-----------------------
 # Transformation
@@ -113,3 +114,32 @@ def transform2DPoints(points, trans):
     points = points[:, :2]
     return points
     
+def vector_quat_to_matrix(vector, quat):
+    """
+    Converts a vector and a quaternion to a transformation matrix.
+    input:
+        vector: a 3-dimensional vector (x, y, z)
+        quat: a 4-dimensional quaternion (x, y, z, w)
+    output:
+        transformation_matrix: a 4x4 transformation matrix
+    """
+    rotation_matrix = tf.quaternion_matrix([quat[3], quat[0], quat[1], quat[2]])
+    translation_matrix = tf.translation_matrix(vector)
+    transformation_matrix = translation_matrix.dot(rotation_matrix)
+    return transformation_matrix
+
+def kdl_frame_to_mat(frame):
+    """
+    Convert a PyKDL Frame to a 4x4 numpy matrix.
+    """
+    rot_mat = np.asarray([[frame.M[0, 0], frame.M[0, 1], frame.M[0, 2]],
+                        [frame.M[1, 0], frame.M[1, 1], frame.M[1, 2]],
+                        [frame.M[2, 0], frame.M[2, 1], frame.M[2, 2]]])
+    rot_mat_ext = np.eye(4)
+    rot_mat_ext[:3, :3] = rot_mat
+
+    trans_vector = np.asarray([frame.p[0], frame.p[1], frame.p[2]])
+    translation_mat = tf.translation_matrix(trans_vector)
+    transformation_matrix = translation_mat.dot(rot_mat_ext)
+    transformation_matrix
+    return transformation_matrix, rot_mat_ext, translation_mat

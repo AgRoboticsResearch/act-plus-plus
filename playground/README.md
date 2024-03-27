@@ -19,6 +19,10 @@ cp PyKDL.so ~/anaconda3/envs/py310/lib/python3.10/site-packages/
 
 ### urdf_parser_py 
 https://github.com/ros/urdf_parser_py 
+
+## kdl_parser_py
+https://github.com/ros/kdl_parser
 ```bash
+cd kdl_parser_py
 pip install -e .
 ```
