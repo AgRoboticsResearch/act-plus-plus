@@ -145,18 +145,18 @@ def plot_robot_2d_xy(poses):
     plt.show()
 
 def get_colormap_color(value, colormap_code=cv.COLORMAP_JET):
-  """
-  Maps a value to a color using the specified colormap.
+    """
+    Maps a value to a color using the specified colormap.
 
-  Args:
-      value (float): Value to be mapped (0.0 to 1.0).
-      colormap_code (int, optional): OpenCV colormap code. Defaults to cv.COLORMAP_JET.
+    Args:
+        value (float): Value to be mapped (0.0 to 1.0).
+        colormap_code (int, optional): OpenCV colormap code. Defaults to cv.COLORMAP_JET.
 
-  Returns:
-      tuple: RGB color tuple.
-  """
-  cmap = cv.applyColorMap(np.array([[value * 255]], dtype=np.uint8), colormap_code)
-  return tuple(cmap[0][0])
+    Returns:
+        tuple: RGB color tuple.
+    """
+    cmap = cv.applyColorMap(np.array([[value * 255]], dtype=np.uint8), colormap_code)
+    return tuple(cmap[0][0])
 
 def plot_robot_2d_xy_batch(link_poses_list):
     """
