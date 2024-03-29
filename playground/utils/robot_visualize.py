@@ -260,3 +260,26 @@ def paint_action_in_image(img_plot, vis_actions, proj_mat, fk_solver, chain, sav
         fig.savefig(save_path, dpi=150, format='jpg')
     else:
         fig.show()
+
+
+def paint_action_in_image_cv(img_plot, vis_actions, proj_mat, fk_solver, chain, highlight_action=None):
+    painted_img = img_plot.copy()  # Create a copy to avoid modifying the original
+    if highlight_action is not None:
+        vis_actions = np.vstack([vis_actions, highlight_action])
+
+    cam_poses, cam_poses_raw, link_poses_list = get_camera_poses(vis_actions, fk_solver, chain)
+    cam_pts_init, cam_in_world_all_pos = get_camera_in_world_and_init(cam_poses_raw)
+    # cam_pts_init to ee_pts_cam (ee_pts_init, init is the same as cam)
+    camera_T_ee = trans.states2SE3([0.12, -0.008, -0.0485, 0, 0, 0])
+    ee_pts_cam = camera_T_ee.dot(trans.xyz2homo(cam_pts_init).T).T[:,: 3]
+    ee_pts_opt = pts_cam_to_opt(ee_pts_cam)
+    uvs = proj.project_point_to_image(ee_pts_opt, proj_mat)
+
+    for i, uv in enumerate(uvs):
+        point_color = get_colormap_color(i / len(uvs))
+        cv.circle(painted_img, (int(uv[0]), int(uv[1])), radius=1, color=(int(point_color[0]), int(point_color[1]), int(point_color[2])), thickness=-1) 
+        if highlight_action is not None and i == len(uvs) - 1:
+            cv.circle(painted_img, (int(uv[0]), int(uv[1])), radius=5, color=(0, 0, 255), thickness=-1)
+
+    painted_img = cv.cvtColor(painted_img, cv.COLOR_BGR2RGB) 
+    return painted_img
