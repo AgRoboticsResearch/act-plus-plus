@@ -52,7 +52,18 @@ class DETRVAE(nn.Module):
         self.vq, self.vq_class, self.vq_dim = vq, vq_class, vq_dim
         self.state_dim, self.action_dim = state_dim, action_dim
         hidden_dim = transformer.d_model
-        self.action_head = nn.Linear(hidden_dim, action_dim)
+        self.end_pose_to_action = False
+        print("Use end_pose_to_action: ", self.end_pose_to_action)
+        if self.end_pose_to_action:
+            end_pose_dim = 6 # TODO hardcode, xyzrpy
+            middle_dim = 256
+            self.end_pose_head = nn.Linear(hidden_dim, end_pose_dim)
+            self.end_pose_mid = nn.Linear(end_pose_dim, middle_dim)
+            self.action_head = nn.Linear(middle_dim, action_dim)
+        else:
+            self.action_head = nn.Linear(hidden_dim, action_dim)
+
+
         self.is_pad_head = nn.Linear(hidden_dim, 1)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         if backbones is not None:
@@ -177,7 +188,17 @@ class DETRVAE(nn.Module):
             env_state = self.input_proj_env_state(env_state)
             transformer_input = torch.cat([qpos, env_state], axis=1) # seq length = 2
             hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[0]
-        a_hat = self.action_head(hs)
+        if self.end_pose_to_action:
+            end_pose = self.end_pose_head(hs)
+            end_pose_mid = self.end_pose_mid(end_pose)
+            a_hat = self.action_head(end_pose_mid)
+            # print("hs:", hs.shape)
+            # print("end_pose:", end_pose.shape)
+            # print("end_pose_mid:", end_pose_mid.shape)
+            # print("a_hat:", a_hat.shape)
+
+        else:
+            a_hat = self.action_head(hs)
         is_pad_hat = self.is_pad_head(hs)
         return a_hat, is_pad_hat, [mu, logvar], probs, binaries
 

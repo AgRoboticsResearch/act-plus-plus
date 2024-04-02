@@ -64,8 +64,13 @@ TASK_CONFIGS = {
         'num_episodes': 50,
         'episode_len': 500,
         'camera_names': ['wrist', 'wrist_down']
+    },
+    'act_demo_scara_realfruit_block':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_pick_realfruit_block',
+        'num_episodes': 50,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
     }
-
 }
 ### Z1 envs fixed constants
 DT = 0.033333
