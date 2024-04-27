@@ -70,6 +70,30 @@ TASK_CONFIGS = {
         'num_episodes': 50,
         'episode_len': 500,
         'camera_names': ['wrist', 'wrist_down']
+    },
+    'act_scara_shunba':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_shunba',
+        'num_episodes': 66,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+        'act_scara_shunba_finetune_block1':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_shunba_finetune_block1',
+        'num_episodes': 66,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+        'act_scara_shunba_finetune_block2':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_shunba_finetune_block2',
+        'num_episodes': 66,
+        'episode_len': 500,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+        'act_scara_mag_fruit_block':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_mag_fruit_block',
+        'num_episodes': 100,
+        'episode_len': 300,
+        'camera_names': ['wrist', 'wrist_down']
     }
 }
 ### Z1 envs fixed constants
