@@ -14,10 +14,10 @@ from robomimic.models.base_nets import ResNet18Conv, SpatialSoftmax
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.training_utils import EMAModel
+from robomimic.algo.diffusion_policy import replace_bn_with_gn, ConditionalUnet1D
 
 
 class DiffusionPolicy(nn.Module):
-    from robomimic.algo.diffusion_policy import replace_bn_with_gn, ConditionalUnet1D
 
     def __init__(self, args_override):
         super().__init__()
@@ -35,7 +35,7 @@ class DiffusionPolicy(nn.Module):
         self.num_kp = 32
         self.feature_dimension = 64
         self.ac_dim = args_override['action_dim'] # 14 + 2
-        self.obs_dim = self.feature_dimension * len(self.camera_names) + 14 # camera features and proprio
+        self.obs_dim = self.feature_dimension * len(self.camera_names) + 4 # camera features and proprio
 
         backbones = []
         pools = []
@@ -55,6 +55,7 @@ class DiffusionPolicy(nn.Module):
             input_dim=self.ac_dim,
             global_cond_dim=self.obs_dim*self.observation_horizon
         )
+        # print("Noise pred net: ", noise_pred_net)
 
         nets = nn.ModuleDict({
             'policy': nn.ModuleDict({
@@ -64,6 +65,7 @@ class DiffusionPolicy(nn.Module):
                 'noise_pred_net': noise_pred_net
             })
         })
+        # print("nets: ", nets)
 
         nets = nets.float().cuda()
         ENABLE_EMA = True
