@@ -18,8 +18,7 @@ from brl_constants import TASK_CONFIGS
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
 from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions
-from policy import ACTPolicy, CNNMLPPolicy
-from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy
+from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy, EPACTPolicy
 from visualize_episodes import save_videos
 
 from detr.models.latent_model import Latent_Model_Transformer
@@ -175,6 +174,8 @@ def make_policy(policy_class, policy_config):
         policy = CNNMLPPolicy(policy_config)
     elif policy_class == 'Diffusion':
         policy = DiffusionPolicy(policy_config)
+    elif policy_class == 'EPACT':
+        policy = EPACTPolicy(policy_config)
     else:
         raise NotImplementedError
     return policy
@@ -186,6 +187,8 @@ def make_optimizer(policy_class, policy):
     elif policy_class == 'CNNMLP':
         optimizer = policy.configure_optimizers()
     elif policy_class == 'Diffusion':
+        optimizer = policy.configure_optimizers()
+    elif policy_class == 'EPACT':
         optimizer = policy.configure_optimizers()
     else:
         raise NotImplementedError
@@ -219,6 +222,10 @@ def forward_pass(data, policy):
     image_data, qpos_data, action_data, is_pad = image_data.cuda(), qpos_data.cuda(), action_data.cuda(), is_pad.cuda()
     return policy(qpos_data, image_data, action_data, is_pad) # TODO remove None
 
+def forward_pass_epact(data, policy):
+    image_data, qpos_data, action_data, end_pose_data, is_pad = data
+    image_data, qpos_data, action_data, is_pad, end_pose_data = image_data.cuda(), qpos_data.cuda(), action_data.cuda(), is_pad.cuda(), end_pose_data.cuda()
+    return policy(qpos_data, image_data, action_data, is_pad, end_pose_data) # TODO remove None
 
 def train_bc(train_dataloader, val_dataloader, config):
     num_steps = config['num_steps']
@@ -254,7 +261,10 @@ def train_bc(train_dataloader, val_dataloader, config):
                 policy.eval()
                 validation_dicts = []
                 for batch_idx, data in enumerate(val_dataloader):
-                    forward_dict = forward_pass(data, policy)
+                    if policy_class == 'EPACT':
+                        forward_dict = forward_pass_epact(data, policy)
+                    else:
+                        forward_dict = forward_pass(data, policy)
                     validation_dicts.append(forward_dict)
                     if batch_idx > 50:
                         break
@@ -287,7 +297,10 @@ def train_bc(train_dataloader, val_dataloader, config):
         policy.train()
         optimizer.zero_grad()
         data = next(train_dataloader)
-        forward_dict = forward_pass(data, policy)
+        if policy_class == 'EPACT':
+            forward_dict = forward_pass_epact(data, policy)
+        else:
+            forward_dict = forward_pass(data, policy)
         # backward
         loss = forward_dict['loss']
         loss.backward()

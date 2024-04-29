@@ -114,6 +114,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
             image_data = torch.from_numpy(all_cam_images)
             qpos_data = torch.from_numpy(qpos).float()
             action_data = torch.from_numpy(padded_action).float()
+            end_pose_data = torch.from_numpy(padded_action).float()
             is_pad = torch.from_numpy(is_pad).bool()
 
             # channel last
@@ -153,7 +154,10 @@ class EpisodicDataset(torch.utils.data.Dataset):
             quit()
 
         # print(image_data.dtype, qpos_data.dtype, action_data.dtype, is_pad.dtype)
-        return image_data, qpos_data, action_data, is_pad
+        if self.policy_class == 'EPACT':
+            return image_data, qpos_data, action_data, is_pad, end_pose_data
+        else:
+            return image_data, qpos_data, action_data, is_pad
 
 
 def get_norm_stats(dataset_path_list):
