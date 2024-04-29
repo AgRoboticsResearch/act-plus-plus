@@ -12,6 +12,14 @@ import torchvision.transforms as transforms
 import IPython
 e = IPython.embed
 
+try:
+    import kdl_parser_py.urdf
+    import PyKDL as kdl
+    import transformations as tf
+    import transformation as trans
+except:
+    print('Failed to import PyKDL, EPACT is not available')
+
 def flatten_list(l):
     return [item for sublist in l for item in sublist]
 
@@ -31,6 +39,13 @@ class EpisodicDataset(torch.utils.data.Dataset):
             self.augment_images = True
         else:
             self.augment_images = False
+        if self.policy_class == 'EPACT':
+            urdf_path =  "/home/zfei/code/act-plus-plus/urdf/hitbot_model.urdf"
+            print("URDF Path: ", urdf_path)
+            (ok, tree)  = kdl_parser_py.urdf.treeFromFile(urdf_path)
+            print("kdl_parse urdf ok?: ", ok)
+            self.chain = tree.getChain("world", "camera_link")
+            self.fk_solver = kdl.ChainFkSolverPos_recursive(self.chain)
 
         # self.augment_images = True
         print("augment_images: ", self.augment_images)
@@ -109,12 +124,21 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 else:
                     all_cam_images.append(image_dict[cam_name])
             all_cam_images = np.stack(all_cam_images, axis=0)
+            
+            # get end pose in the current end pose frame (only for EPACT)
+            if self.policy_class == 'EPACT':
+                all_actions = np.vstack([np.append(qpos, 0), padded_action])
+                ee_poses, ee_poses_raw, link_poses_list = get_camera_poses(all_actions, self.fk_solver, self.chain)
+                ee_pts_init, ee_in_world_all_pos, ee_in_init_all = get_camera_in_world_and_init(ee_poses_raw)
+                ee_pose = batch_transform_to_xyzyrp_transformations(ee_in_init_all)
+                # print("ee_pose: ", ee_pose.shape)
+                # print("ee_pose: ", ee_pose)
+                end_pose_data = torch.from_numpy(ee_pose).float()
 
             # construct observations
             image_data = torch.from_numpy(all_cam_images)
             qpos_data = torch.from_numpy(qpos).float()
             action_data = torch.from_numpy(padded_action).float()
-            end_pose_data = torch.from_numpy(padded_action).float()
             is_pad = torch.from_numpy(is_pad).bool()
 
             # channel last
@@ -374,3 +398,106 @@ def detach_dict(d):
 def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+
+### End pose functions
+def joint_states_to_jnt_array(joint_states):
+    # Convert joint states to a KDL JntArray
+    kdl_joint_array = kdl.JntArray(len(joint_states))
+    for i, value in enumerate(joint_states):
+        kdl_joint_array[i] = value
+    kdl_joint_array
+    return kdl_joint_array
+
+def get_frame_pose(fk_solver, kdl_joint_array):
+    frame = kdl.Frame()
+    fk_solver.JntToCart(kdl_joint_array, frame)
+    # Extract position and orientation
+    position = [frame.p.x(), frame.p.y(), frame.p.z()]
+    orientation = [frame.M.GetQuaternion()[0], frame.M.GetQuaternion()[1],
+                    frame.M.GetQuaternion()[2], frame.M.GetQuaternion()[3]]
+    return position, orientation
+
+def joint_states_to_ee_pose(all_joint_states, fk_solver):
+    positions = []
+    orientations = []
+    for i, joint_states in enumerate(all_joint_states):
+        kdl_joint_array = joint_states_to_jnt_array(joint_states)
+        position, orientation = get_frame_pose(fk_solver, kdl_joint_array)
+        positions.append(position)
+        orientations.append(orientation)
+        
+    positions = np.asarray(positions)
+    orientations = np.asarray(orientations)
+    return positions, orientations
+
+def get_poses(fk_solver, chain, joint_states):
+    # Loop over all segments in the chain
+    poses = []
+    for i in range(chain.getNrOfSegments()):
+        # Compute the Cartesian pose for the current joint state
+        pose = kdl.Frame()
+        fk_solver.JntToCart(joint_states, pose, i+1)
+        segment_name = chain.getSegment(i).getName()
+        poses.append((segment_name, pose))
+        # print(f"Name: {segment_name}, Pose: \n {pose}")
+    return poses
+
+def get_camera_poses(vis_actions, fk_solver, chain):
+    link_poses_list = []
+    ee_poses = []
+    ee_poses_raw = []
+    for i in range(0, len(vis_actions), 1):
+        vis_action = vis_actions[i]
+        joint_states = joint_states_to_jnt_array(vis_action[:4])
+        link_poses = get_poses(fk_solver, chain, joint_states)
+        link_poses_list.append(link_poses)
+        ee_poses.append([link_poses[-1][1].p[0], link_poses[-1][1].p[1], link_poses[-1][1].p[2]])
+        ee_poses_raw.append(link_poses[-1][1])
+    ee_poses = np.asarray(ee_poses)
+    return ee_poses, ee_poses_raw, link_poses_list
+
+def get_camera_in_world_and_init(ee_poses_raw, init_states=None):
+    transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(ee_poses_raw[0])
+    ee_in_world_init = transformation_matrix
+    world_T_init = np.linalg.inv(ee_in_world_init)
+
+    ee_in_world_all = []
+    ee_in_init_all = []
+    ee_in_init_all_pos = []
+    ee_in_world_all_pos = []
+    for ee_pose in ee_poses_raw:
+        ee_in_world_all_pos.append([ee_pose.p[0], ee_pose.p[1], ee_pose.p[2], 1])
+        ee_in_world, _, _= trans.kdl_frame_to_mat(ee_pose)
+        ee_in_world_all.append(ee_in_world)
+        ee_in_init = world_T_init.dot(ee_in_world)
+        ee_in_init_all.append(ee_in_init)
+        ee_in_init_all_pos.append(ee_in_init[:3, 3])
+        
+        # print("ee rpy: ", tf.euler_from_matrix(ee_in_init, 'rxyz'))
+
+    ee_in_init_all_pos = np.asarray(ee_in_init_all_pos)
+    ee_in_world_all_pos = np.asarray(ee_in_world_all_pos)
+    ee_in_init_all = np.asarray(ee_in_init_all)
+    return  ee_in_init_all_pos, ee_in_world_all_pos, ee_in_init_all
+
+def batch_transform_to_xyzyrp_transformations(batch_transform):
+    """
+    Converts a batch of transformation matrices (65, 4, 4) to a batch of (x, y, z, roll, pitch, yaw) (65, 6) using transformations library.
+
+    Note: This approach might have limitations and is not recommended as the primary method due to potential limitations in rotation order and axes supported.
+
+    Args:
+        batch_transform: A NumPy array of shape (batch_size, 4, 4) representing the batch of transformation matrices.
+
+    Returns:
+        A NumPy array of shape (batch_size, 6) containing the translation (x, y, z) and Euler angles (roll, pitch, yaw) for each transformation matrix.
+    """
+    batch_xyzyrp = np.zeros((batch_transform.shape[0], 6))
+    for i in range(batch_transform.shape[0]):
+        matrix = batch_transform[i]
+        translation = matrix[:-1, 3]  # Extract translation (might be limited axes)
+        euler_angles = tf.euler_from_matrix(matrix, axes='sxyz')  # Might be limited axes
+
+        batch_xyzyrp[i] = np.concatenate([translation, euler_angles])
+    return batch_xyzyrp
