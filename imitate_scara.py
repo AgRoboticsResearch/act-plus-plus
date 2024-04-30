@@ -90,6 +90,30 @@ def main(args):
 
                          'no_encoder': args['no_encoder'],
                          }
+    if policy_class == 'EPACT':
+        enc_layers = 4
+        dec_layers = 7
+        nheads = 8
+        policy_config = {'lr': args['lr'],
+                         'num_queries': args['chunk_size'],
+                         'kl_weight': args['kl_weight'],
+                         'ep_weight': args['ep_weight'],
+                         'hidden_dim': args['hidden_dim'],
+                         'dim_feedforward': args['dim_feedforward'],
+                         'lr_backbone': lr_backbone,
+                         'backbone': backbone,
+                         'enc_layers': enc_layers,
+                         'dec_layers': dec_layers,
+                         'nheads': nheads,
+                         'camera_names': camera_names,
+                         'vq': args['use_vq'],
+                         'vq_class': args['vq_class'],
+                         'vq_dim': args['vq_dim'],
+                         'action_dim': 5,
+                         'state_dim': 4,
+
+                         'no_encoder': args['no_encoder'],
+                         }
     elif policy_class == 'Diffusion':
 
         policy_config = {'lr': args['lr'],
@@ -223,7 +247,7 @@ def forward_pass(data, policy):
     return policy(qpos_data, image_data, action_data, is_pad) # TODO remove None
 
 def forward_pass_epact(data, policy):
-    image_data, qpos_data, action_data, end_pose_data, is_pad = data
+    image_data, qpos_data, action_data, is_pad, end_pose_data = data
     image_data, qpos_data, action_data, is_pad, end_pose_data = image_data.cuda(), qpos_data.cuda(), action_data.cuda(), is_pad.cuda(), end_pose_data.cuda()
     return policy(qpos_data, image_data, action_data, is_pad, end_pose_data) # TODO remove None
 
@@ -343,7 +367,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', action='store', type=float, help='lr', required=True)
     parser.add_argument('--load_pretrain', action='store_true', default=False)
     parser.add_argument('--eval_every', action='store', type=int, default=10000, help='eval_every', required=False)
-    parser.add_argument('--validate_every', action='store', type=int, default=10000, help='validate_every', required=False)
+    parser.add_argument('--validate_every', action='store', type=int, default=1000, help='validate_every', required=False)
     parser.add_argument('--save_every', action='store', type=int, default=10000, help='save_every', required=False)
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='resume_ckpt_path', required=False)
     parser.add_argument('--skip_mirrored_data', action='store_true')
@@ -363,4 +387,8 @@ if __name__ == '__main__':
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
     parser.add_argument('--no_encoder', action='store_true')
     
+    # for EPACt
+    parser.add_argument('--ep_weight', action='store', type=float, help='EP Weight', required=False)
+
+
     main(vars(parser.parse_args()))

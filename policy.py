@@ -219,6 +219,10 @@ class ACTPolicy(nn.Module):
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
+            print("image", image.shape)
+            print("qpos", qpos.shape)
+            print("actions", actions.shape)
+            print("is_pad", is_pad.shape)
             a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
             if self.vq or self.model.encoder is None:
                 total_kld = [torch.tensor(0.0)]
@@ -262,20 +266,23 @@ class EPACTPolicy(nn.Module):
         self.model = model # CVAE decoder
         self.optimizer = optimizer
         self.kl_weight = args_override['kl_weight']
+        self.ep_weight = args_override['ep_weight']
+        print("EPACTPolicy ep_weight", self.ep_weight)
         self.vq = args_override['vq']
         print(f'KL Weight {self.kl_weight}')
 
-    def __call__(self, qpos, image, actions=None, is_pad=None, end_pose_data=None, vq_sample=None):
+    def __call__(self, qpos, image, actions=None, is_pad=None, end_poses=None, vq_sample=None):
         env_state = None
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
         image = normalize(image)
         if actions is not None: # training time
             actions = actions[:, :self.model.num_queries]
+            end_poses = end_poses[:, :self.model.num_queries]
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
-            a_hat, is_pad_hat, (mu, logvar), probs, binaries, end_pose = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
+            a_hat, is_pad_hat, (mu, logvar), probs, binaries, end_pose_hat = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
             if self.vq or self.model.encoder is None:
                 total_kld = [torch.tensor(0.0)]
             else:
@@ -286,11 +293,17 @@ class EPACTPolicy(nn.Module):
             l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
             loss_dict['l1'] = l1
             loss_dict['kl'] = total_kld[0]
-            loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
+
+            # End Pose Loss (eploss)
+            lep = F.l1_loss(end_poses, end_pose_hat, reduction='none')
+            lep = (lep * ~is_pad.unsqueeze(-1)).mean()
+            loss_dict['ep'] = lep
+
+            loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight + loss_dict['ep'] * self.ep_weight
             return loss_dict
         else: # inference time
-            a_hat, _, (_, _), _, _, end_pose = self.model(qpos, image, env_state, vq_sample=vq_sample) # no action, sample from prior
-            return a_hat, end_pose
+            a_hat, _, (_, _), _, _, end_pose_hat = self.model(qpos, image, env_state, vq_sample=vq_sample) # no action, sample from prior
+            return a_hat, end_pose_hat
 
     def configure_optimizers(self):
         return self.optimizer
