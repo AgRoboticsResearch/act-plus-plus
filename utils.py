@@ -466,7 +466,9 @@ def get_camera_in_world_and_init(ee_poses_raw, init_states=None):
     ee_in_init_all = []
     ee_in_init_all_pos = []
     ee_in_world_all_pos = []
-    for ee_pose in ee_poses_raw:
+    for idx, ee_pose in enumerate(ee_poses_raw):
+        if idx == 0:
+            continue
         ee_in_world_all_pos.append([ee_pose.p[0], ee_pose.p[1], ee_pose.p[2], 1])
         ee_in_world, _, _= trans.kdl_frame_to_mat(ee_pose)
         ee_in_world_all.append(ee_in_world)

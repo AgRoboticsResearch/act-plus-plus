@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import transformation as trans
 import cv2 as cv
 import projections as proj
+import transformations as tf
 
 def joint_states_to_jnt_array(joint_states):
     # Convert joint states to a KDL JntArray
@@ -283,3 +284,25 @@ def paint_action_in_image_cv(img_plot, vis_actions, proj_mat, fk_solver, chain, 
 
     painted_img = cv.cvtColor(painted_img, cv.COLOR_BGR2RGB) 
     return painted_img
+
+
+def batch_transform_to_xyzyrp_transformations(batch_transform):
+    """
+    Converts a batch of transformation matrices (65, 4, 4) to a batch of (x, y, z, roll, pitch, yaw) (65, 6) using transformations library.
+
+    Note: This approach might have limitations and is not recommended as the primary method due to potential limitations in rotation order and axes supported.
+
+    Args:
+        batch_transform: A NumPy array of shape (batch_size, 4, 4) representing the batch of transformation matrices.
+
+    Returns:
+        A NumPy array of shape (batch_size, 6) containing the translation (x, y, z) and Euler angles (roll, pitch, yaw) for each transformation matrix.
+    """
+    batch_xyzyrp = np.zeros((batch_transform.shape[0], 6))
+    for i in range(batch_transform.shape[0]):
+        matrix = batch_transform[i]
+        translation = matrix[:-1, 3]  # Extract translation (might be limited axes)
+        euler_angles = tf.euler_from_matrix(matrix, axes='sxyz')  # Might be limited axes
+
+        batch_xyzyrp[i] = np.concatenate([translation, euler_angles])
+    return batch_xyzyrp
