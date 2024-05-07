@@ -300,6 +300,8 @@ class EPACTPolicy(nn.Module):
             loss_dict['ep'] = lep
 
             loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight + loss_dict['ep'] * self.ep_weight
+            # loss_dict['loss'] = loss_dict['kl'] * self.kl_weight + loss_dict['ep'] * self.ep_weight
+
             return loss_dict
         else: # inference time
             a_hat, _, (_, _), _, _, end_pose_hat = self.model(qpos, image, env_state, vq_sample=vq_sample) # no action, sample from prior

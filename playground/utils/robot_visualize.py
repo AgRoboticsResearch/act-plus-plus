@@ -201,9 +201,16 @@ def get_camera_poses(vis_actions, fk_solver, chain):
     ee_poses = np.asarray(ee_poses)
     return ee_poses, ee_poses_raw, link_poses_list
 
-def get_camera_in_world_and_init(ee_poses_raw):
-    transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(ee_poses_raw[0])
-    ee_in_world_init = transformation_matrix
+def action_to_pose(action, fk_solver, chain):
+    joint_states = joint_states_to_jnt_array(action[:4])
+    frame = get_poses(fk_solver, chain, joint_states)[-1][1]
+    transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(frame)
+    return transformation_matrix
+
+def get_camera_in_world_and_init(ee_poses_raw, ee_in_world_init=None):
+    if ee_in_world_init is None:
+        transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(ee_poses_raw[0])
+        ee_in_world_init = transformation_matrix
     world_T_init = np.linalg.inv(ee_in_world_init)
 
     ee_in_world_all = []
@@ -232,7 +239,7 @@ def pts_cam_to_opt(ee_pts_cam):
     ee_pts_opt[:, 1] = -ee_pts_opt[:, 1]
     return ee_pts_opt
 
-def paint_action_in_image(img_plot, vis_actions, proj_mat, fk_solver, chain, save_path=None, plt_fig_ax=None, title=""):
+def paint_action_in_image(img_plot, vis_actions, proj_mat, fk_solver, chain, ee_in_world_init=None, save_path=None, plt_fig_ax=None, title=""):
     if plt_fig_ax is None:
         fig, ax = plt.subplots()  # Create a single figure and axis
     else:
@@ -240,7 +247,7 @@ def paint_action_in_image(img_plot, vis_actions, proj_mat, fk_solver, chain, sav
 
     ax.cla()
     cam_poses, cam_poses_raw, link_poses_list = get_camera_poses(vis_actions, fk_solver, chain)
-    cam_pts_init, cam_in_world_all_pos = get_camera_in_world_and_init(cam_poses_raw)
+    cam_pts_init, cam_in_world_all_pos = get_camera_in_world_and_init(cam_poses_raw, ee_in_world_init)
     # cam_pts_init to ee_pts_cam (ee_pts_init, init is the same as cam)
     camera_T_ee = trans.states2SE3([0.12, -0.008, -0.0485, 0, 0, 0])
     ee_pts_cam = camera_T_ee.dot(trans.xyz2homo(cam_pts_init).T).T[:,: 3]
@@ -306,3 +313,32 @@ def batch_transform_to_xyzyrp_transformations(batch_transform):
 
         batch_xyzyrp[i] = np.concatenate([translation, euler_angles])
     return batch_xyzyrp
+
+
+def paint_ee_pts_in_image(img_plot, ee_pts_init, proj_mat, fk_solver, chain, ee_in_world_init=None, save_path=None, plt_fig_ax=None, title=""):
+    if plt_fig_ax is None:
+        fig, ax = plt.subplots()  # Create a single figure and axis
+    else:
+        fig, ax = plt_fig_ax
+
+    ax.cla()
+    # cam_pts_init to ee_pts_cam (ee_pts_init, init is the same as cam)
+    camera_T_ee = trans.states2SE3([0.12, -0.008, -0.0485, 0, 0, 0])
+    ee_pts_cam = camera_T_ee.dot(trans.xyz2homo(ee_pts_init).T).T[:,: 3]
+    ee_pts_opt = pts_cam_to_opt(ee_pts_cam)
+    uvs = proj.project_point_to_image(ee_pts_opt, proj_mat)
+    ax.imshow(cv.cvtColor(img_plot, cv.COLOR_BGR2RGB))
+    ax.scatter(uvs[:, 0], uvs[:, 1], c=range(len(uvs)), s=10)
+    # limit the axis to the image shape
+    ax.set_xlim([0, img_plot.shape[1]])
+    ax.set_ylim([img_plot.shape[0], 0])
+    # turn off the axis
+    ax.axis('off')
+    # ax.colorbar()
+    # save the image
+    plt.title(title)
+    plt.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, format='jpg')
+    else:
+        fig.show()
