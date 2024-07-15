@@ -100,6 +100,18 @@ TASK_CONFIGS = {
         'num_episodes': 100,
         'episode_len': 300,
         'camera_names': ['wrist', 'wrist_down', 'top']
+    },
+        'act_scara_2cam':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_2cam',
+        'num_episodes': 100,
+        'episode_len': 300,
+        'camera_names': ['wrist', 'wrist_down']
+    },
+        'act_scara_sim_env':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_sim-env-block-pick',
+        'num_episodes': 400,
+        'episode_len': 300,
+        'camera_names': ['wrist', 'wrist_down']
     }
 }
 ### Z1 envs fixed constants
