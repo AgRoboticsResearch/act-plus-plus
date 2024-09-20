@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from .models import build_ACT_model, build_CNNMLP_model, build_EPACT_model
+from .models import build_ACT_model, build_CNNMLP_model, build_EPACT_model, build_DINOACT_model
 
 import IPython
 e = IPython.embed
@@ -93,6 +93,30 @@ def build_ACT_model_and_optimizer(args_override):
         setattr(args, k, v)
     print("ACT Args: ", args)
     model = build_ACT_model(args)
+    model.cuda()
+
+    param_dicts = [
+        {"params": [p for n, p in model.named_parameters() if "backbone" not in n and p.requires_grad]},
+        {
+            "params": [p for n, p in model.named_parameters() if "backbone" in n and p.requires_grad],
+            "lr": args.lr_backbone,
+        },
+    ]
+    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr,
+                                  weight_decay=args.weight_decay)
+
+    return model, optimizer
+
+
+def build_DINOACT_model_and_optimizer(args_override):
+    parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
+    args = parser.parse_args(["--ckpt_dir", "/mnt/data1/act/act_demo_z1_push_red/ckpt", "--policy_class", "DINOACT", "--task_name", "act_demo_z1_push_red", "--seed", "0","--num_steps", "2000"]) # TODO Hardcode
+    # args = parser.parse_args()
+    for k, v in args_override.items():
+        # print("key ", k, "value ", v)
+        setattr(args, k, v)
+    print("DINO Args: ", args)
+    model = build_DINOACT_model(args)
     model.cuda()
 
     param_dicts = [

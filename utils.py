@@ -24,7 +24,7 @@ def flatten_list(l):
     return [item for sublist in l for item in sublist]
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class):
+    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class, resize=None):
         super(EpisodicDataset).__init__()
         self.episode_ids = episode_ids
         self.dataset_path_list = dataset_path_list
@@ -35,6 +35,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.cumulative_len = np.cumsum(self.episode_len)
         self.max_episode_len = max(episode_len)
         self.policy_class = policy_class
+        self.resize = resize
         if self.policy_class == 'Diffusion':
             self.augment_images = True
         else:
@@ -92,11 +93,17 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 image_dict = dict()
                 for cam_name in self.camera_names:
                     image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
-                
+                    if self.resize is not None:
+                        image_dict[cam_name] = cv2.resize(image_dict[cam_name], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
+
                 if compressed:
                     for cam_name in image_dict.keys():
                         decompressed_image = cv2.imdecode(image_dict[cam_name], 1)
                         image_dict[cam_name] = np.array(decompressed_image)
+                        if self.resize is not None:
+                            image_dict[cam_name] = cv2.resize(image_dict[cam_name], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
+
+
                 
                 # get all actions after and including start_ts
                 if is_sim:
@@ -256,7 +263,7 @@ def BatchSampler(batch_size, episode_len_l, sample_weights):
             batch.append(step_idx)
         yield batch
 
-def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None, stats_dir_l=None, sample_weights=None, train_ratio=0.99):
+def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None, stats_dir_l=None, sample_weights=None, train_ratio=0.99, resize=None):
     if type(dataset_dir_l) == str:
         dataset_dir_l = [dataset_dir_l]
     dataset_path_list_list = [find_all_hdf5(dataset_dir, skip_mirrored_data) for dataset_dir in dataset_dir_l]
@@ -300,8 +307,8 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     for id in val_episode_ids:
         print("val data: ", dataset_path_list[id])
     # construct dataset and dataloader
-    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
-    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)
+    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class, resize=resize)
+    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class, resize=resize)
     train_num_workers = (8 if os.getlogin() == 'zfu' else 16) if train_dataset.augment_images else 8
     val_num_workers = 8 if train_dataset.augment_images else 8
     print(f'Augment images: {train_dataset.augment_images}, train_num_workers: {train_num_workers}, val_num_workers: {val_num_workers}')

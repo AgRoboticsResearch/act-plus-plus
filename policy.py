@@ -3,7 +3,7 @@ from torch.nn import functional as F
 import torchvision.transforms as transforms
 import torch
 import numpy as np
-from detr.main import build_ACT_model_and_optimizer, build_CNNMLP_model_and_optimizer, build_EPACT_model_and_optimizer
+from detr.main import build_ACT_model_and_optimizer, build_CNNMLP_model_and_optimizer, build_EPACT_model_and_optimizer, build_DINOACT_model_and_optimizer
 import IPython
 e = IPython.embed
 
@@ -89,11 +89,9 @@ class DiffusionPolicy(nn.Module):
         n_parameters = sum(p.numel() for p in self.parameters())
         print("number of parameters: %.2fM" % (n_parameters/1e6,))
 
-
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.nets.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         return optimizer
-
 
     def __call__(self, qpos, image, actions=None, is_pad=None):
         B = qpos.shape[0]
@@ -258,6 +256,67 @@ class ACTPolicy(nn.Module):
     def deserialize(self, model_dict):
         return self.load_state_dict(model_dict)
 
+
+class DINOPolicy(nn.Module):
+    def __init__(self, args_override):
+        super().__init__()
+        model, optimizer = build_DINOACT_model_and_optimizer(args_override)
+        self.model = model # CVAE decoder
+        self.optimizer = optimizer
+        self.kl_weight = args_override['kl_weight']
+        self.vq = args_override['vq']
+        print(f'KL Weight {self.kl_weight}')
+
+    def __call__(self, qpos, image, actions=None, is_pad=None, vq_sample=None):
+        env_state = None
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        # print("[DEBUG]image", image.shape)
+        image = normalize(image)
+        # print("[DEBUG]image2", image.shape)
+        if actions is not None: # training time
+            actions = actions[:, :self.model.num_queries]
+            is_pad = is_pad[:, :self.model.num_queries]
+
+            loss_dict = dict()
+            # print("image", image.shape)
+            # print("qpos", qpos.shape)
+            # print("actions", actions.shape)
+            # print("is_pad", is_pad.shape)
+            a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
+            if self.vq or self.model.encoder is None:
+                total_kld = [torch.tensor(0.0)]
+            else:
+                total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
+            if self.vq:
+                loss_dict['vq_discrepancy'] = F.l1_loss(probs, binaries, reduction='mean')
+            all_l1 = F.l1_loss(actions, a_hat, reduction='none')
+            l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
+            loss_dict['l1'] = l1
+            loss_dict['kl'] = total_kld[0]
+            loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
+            return loss_dict
+        else: # inference time
+            a_hat, _, (_, _), _, _ = self.model(qpos, image, env_state, vq_sample=vq_sample) # no action, sample from prior
+            return a_hat
+
+    def configure_optimizers(self):
+        return self.optimizer
+
+    @torch.no_grad()
+    def vq_encode(self, qpos, actions, is_pad):
+        actions = actions[:, :self.model.num_queries]
+        is_pad = is_pad[:, :self.model.num_queries]
+
+        _, _, binaries, _, _ = self.model.encode(qpos, actions, is_pad)
+
+        return binaries
+        
+    def serialize(self):
+        return self.state_dict()
+
+    def deserialize(self, model_dict):
+        return self.load_state_dict(model_dict)
 
 class EPACTPolicy(nn.Module):
     def __init__(self, args_override):

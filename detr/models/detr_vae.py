@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from .backbone import build_backbone
+from .backbone import build_backbone, build_dino_backbone
 from .transformer import build_transformer, TransformerEncoder, TransformerEncoderLayer
 
 import numpy as np
@@ -52,6 +52,8 @@ class DETRVAE(nn.Module):
         self.vq, self.vq_class, self.vq_dim = vq, vq_class, vq_dim
         self.state_dim, self.action_dim = state_dim, action_dim
         hidden_dim = transformer.d_model
+        print(f"[DETRVAE]: state_dim: {state_dim}, hidden_dim: {hidden_dim}, action_dim: {action_dim}")
+
         self.end_pose_to_action = False
         print("Use end_pose_to_action: ", self.end_pose_to_action)
         if self.end_pose_to_action:
@@ -178,16 +180,26 @@ class DETRVAE(nn.Module):
             all_cam_features = []
             all_cam_pos = []
             for cam_id, cam_name in enumerate(self.camera_names):
+                # print(f"[DETRVAE]: cam_id: {cam_id}, image: {image[:, cam_id].shape}")
+
                 features, pos = self.backbones[cam_id](image[:, cam_id])
                 features = features[0] # take the last layer feature
                 pos = pos[0]
-                all_cam_features.append(self.input_proj(features))
+                cam_features = self.input_proj(features)
+                # print(f"[DETRVAE]: cam_id: {cam_id}, cam_features: {cam_features.shape}, pos: {pos.shape}")
+                all_cam_features.append(cam_features)
                 all_cam_pos.append(pos)
             # proprioception features
             proprio_input = self.input_proj_robot_state(qpos)
             # fold camera dimension into width dimension
             src = torch.cat(all_cam_features, axis=3)
+            # print(f"[DETRVAE]: src: {src.shape}")
             pos = torch.cat(all_cam_pos, axis=3)
+            # print(f"[DETRVAE]: pos: {pos.shape}")
+            # print(f"[DETRVAE]: latent_input: {latent_input.shape}")
+            # print(f"[DETRVAE]: proprio_input: {proprio_input.shape}")
+            # print(f"[DETRVAE]: additional_pos_embed: {self.additional_pos_embed.weight.shape}")
+            # print(f"[DETRVAE]: query_embed: {self.query_embed.weight.shape}")
             hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight)[0]
         else:
             qpos = self.input_proj_robot_state(qpos)
@@ -1195,6 +1207,43 @@ def build(args):
     backbones = []
     for _ in args.camera_names:
         backbone = build_backbone(args)
+        backbones.append(backbone)
+
+    transformer = build_transformer(args)
+
+    if args.no_encoder:
+        encoder = None
+    else:
+        encoder = build_encoder(args)
+
+    model = DETRVAE(
+        backbones,
+        transformer,
+        encoder,
+        state_dim=state_dim,
+        num_queries=args.num_queries,
+        camera_names=args.camera_names,
+        vq=args.vq,
+        vq_class=args.vq_class,
+        vq_dim=args.vq_dim,
+        action_dim=args.action_dim,
+    )
+
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("number of parameters: %.2fM" % (n_parameters/1e6,))
+
+    return model
+
+
+def build_dinoact(args):
+    state_dim = args.state_dim
+
+    # From state
+    # backbone = None # from state for now, no need for conv nets
+    # From image
+    backbones = []
+    for _ in args.camera_names:
+        backbone = build_dino_backbone(args)
         backbones.append(backbone)
 
     transformer = build_transformer(args)

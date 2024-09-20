@@ -18,7 +18,7 @@ from brl_constants import TASK_CONFIGS
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
 from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions
-from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy, EPACTPolicy
+from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy, EPACTPolicy, DINOPolicy
 from visualize_episodes import save_videos
 
 from detr.models.latent_model import Latent_Model_Transformer
@@ -67,6 +67,7 @@ def main(args):
     state_dim = 4
     lr_backbone = 1e-5
     backbone = 'resnet18'
+    print("policy_class: ", policy_class)
     if policy_class == 'ACT':
         enc_layers = 4
         dec_layers = 7
@@ -90,7 +91,31 @@ def main(args):
 
                          'no_encoder': args['no_encoder'],
                          }
-    if policy_class == 'EPACT':
+    elif policy_class == "DINOACT":
+        enc_layers = 4
+        dec_layers = 7
+        backbone = 'vits'
+        nheads = 8
+        policy_config = {'lr': args['lr'],
+                         'num_queries': args['chunk_size'],
+                         'kl_weight': args['kl_weight'],
+                         'hidden_dim': args['hidden_dim'],
+                         'dim_feedforward': args['dim_feedforward'],
+                         'lr_backbone': lr_backbone,
+                         'backbone': backbone,
+                         'enc_layers': enc_layers,
+                         'dec_layers': dec_layers,
+                         'nheads': nheads,
+                         'camera_names': camera_names,
+                         'vq': args['use_vq'],
+                         'vq_class': args['vq_class'],
+                         'vq_dim': args['vq_dim'],
+                         'action_dim': 5,
+                         'state_dim': 4,
+
+                         'no_encoder': args['no_encoder'],
+                         }
+    elif policy_class == 'EPACT':
         enc_layers = 4
         dec_layers = 7
         nheads = 8
@@ -172,7 +197,10 @@ def main(args):
     with open(config_path, 'wb') as f:
         pickle.dump(config, f)
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio)
+    resize = None
+    if policy_class == 'DINOACT':
+        resize = (518, 518)
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize)
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
@@ -200,6 +228,8 @@ def make_policy(policy_class, policy_config):
         policy = DiffusionPolicy(policy_config)
     elif policy_class == 'EPACT':
         policy = EPACTPolicy(policy_config)
+    elif policy_class == 'DINOACT':
+        policy = DINOPolicy(policy_config)
     else:
         raise NotImplementedError
     return policy
@@ -214,6 +244,9 @@ def make_optimizer(policy_class, policy):
         optimizer = policy.configure_optimizers()
     elif policy_class == 'EPACT':
         optimizer = policy.configure_optimizers()
+    elif policy_class == 'DINOACT':
+        optimizer = policy.configure_optimizers()
+
     else:
         raise NotImplementedError
     return optimizer

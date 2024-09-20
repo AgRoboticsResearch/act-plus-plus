@@ -5,6 +5,7 @@ Backbone modules.
 from collections import OrderedDict
 
 import torch
+import math
 import torch.nn.functional as F
 import torchvision
 from torch import nn
@@ -13,7 +14,8 @@ from typing import Dict, List
 
 from util.misc import NestedTensor, is_main_process
 
-from .position_encoding import build_position_encoding
+from models.position_encoding import build_position_encoding
+from models.dinov2.dinov2 import DINOv2
 
 import IPython
 e = IPython.embed
@@ -73,6 +75,9 @@ class BackboneBase(nn.Module):
 
     def forward(self, tensor):
         xs = self.body(tensor)
+        # print("xs: ", xs)
+        print("xs[0]: ", xs['0'].shape)
+
         return xs
         # out: Dict[str, NestedTensor] = {}
         # for name, x in xs.items():
@@ -106,11 +111,63 @@ class Joiner(nn.Sequential):
         pos = []
         for name, x in xs.items():
             out.append(x)
+            print("Joiner x: ", x.shape)
+
             # position encoding
             pos.append(self[1](x).to(x.dtype))
 
         return out, pos
 
+class DinoJoiner(nn.Sequential):
+    def __init__(self, backbone, position_embedding):
+        super().__init__(backbone, position_embedding)
+
+    def forward(self, tensor_list: NestedTensor):
+        xs = self[0](tensor_list)
+        
+        out: List[NestedTensor] = []
+        pos = []
+        x = xs
+        out.append(x)
+        # position encoding
+        pos.append(self[1](x).to(x.dtype))
+        # print("DinoJoiner x: ", x.shape)
+
+        return out, pos
+
+class DinoBackbone(nn.Module):
+    def __init__(self, model_name='vits'):
+        super().__init__()
+
+        self.intermediate_layer_idx = {
+        'vits': [2, 5, 8, 11],
+        'vitb': [2, 5, 8, 11], 
+        'vitl': [4, 11, 17, 23], 
+        'vitg': [9, 19, 29, 39]
+        }
+        self.model_name = model_name
+        self.model_backbone = DINOv2(model_name=model_name)
+        self.num_channels = 384
+
+        if model_name == 'vits':
+            self.num_channels = 384
+            self.num_features = 1369
+        for name, parameter in self.model_backbone.named_parameters():
+            # the dino v2 backbone is not going to be trained
+            parameter.requires_grad_(False)
+        self.linear = nn.Linear(self.num_features, 15*25)
+
+    def forward(self, x):
+        xs = self.model_backbone(x)
+        x = xs['x_norm_patchtokens']
+        x = x.permute(0, 2, 1)
+        # print("DinoBackbone x: ", x.shape)
+        x = self.linear(x)
+        # print("DinoBackbone x: ", x.shape)
+        x = x.reshape(-1, self.num_channels, 15, 25)
+        # print("DinoBackbone x: ", x.shape)
+
+        return x
 
 def build_backbone(args):
     position_embedding = build_position_encoding(args)
@@ -119,4 +176,25 @@ def build_backbone(args):
     backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     model = Joiner(backbone, position_embedding)
     model.num_channels = backbone.num_channels
+    return model
+
+
+def build_dino_backbone(args):
+    position_embedding = build_position_encoding(args)
+    train_backbone = args.lr_backbone > 0
+    return_interm_layers = args.masks
+    args.backbone = 'resnet18'
+    encoder='vits'
+
+
+    dino_backbone = DinoBackbone(model_name=encoder)
+
+
+    # backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    # model = Joiner(backbone, position_embedding)
+    # model.num_channels = backbone.num_channels
+
+    model = DinoJoiner(dino_backbone, position_embedding)
+    model.num_channels = dino_backbone.num_channels
+
     return model
