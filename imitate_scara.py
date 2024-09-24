@@ -15,7 +15,7 @@ from torchvision import transforms
 from brl_constants import FPS
 from brl_constants import PUPPET_GRIPPER_JOINT_OPEN
 from brl_constants import TASK_CONFIGS
-from utils import load_data # data functions
+from utils import load_data, load_data_fix_val # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
 from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions
 from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy, EPACTPolicy, DINOPolicy
@@ -186,6 +186,8 @@ def main(args):
         'load_pretrain': args['load_pretrain'],
         'actuator_config': actuator_config,
     }
+    seed = config['seed']
+
 
     if not os.path.isdir(ckpt_dir):
         os.makedirs(ckpt_dir)
@@ -200,7 +202,8 @@ def main(args):
     resize = None
     if policy_class == 'DINOACT':
         resize = (518, 518)
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize)
+    # train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
+    train_dataloader, val_dataloader, stats, _ = load_data_fix_val(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')

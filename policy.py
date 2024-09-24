@@ -217,10 +217,10 @@ class ACTPolicy(nn.Module):
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
-            print("image", image.shape)
-            print("qpos", qpos.shape)
-            print("actions", actions.shape)
-            print("is_pad", is_pad.shape)
+            # print("image", image.shape)
+            # print("qpos", qpos.shape)
+            # print("actions", actions.shape)
+            # print("is_pad", is_pad.shape)
             a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
             if self.vq or self.model.encoder is None:
                 total_kld = [torch.tensor(0.0)]
@@ -357,7 +357,6 @@ class EPACTPolicy(nn.Module):
             lep = F.l1_loss(end_poses, end_pose_hat, reduction='none')
             lep = (lep * ~is_pad.unsqueeze(-1)).mean()
             loss_dict['ep'] = lep
-
             loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight + loss_dict['ep'] * self.ep_weight
             # loss_dict['loss'] = loss_dict['kl'] * self.kl_weight + loss_dict['ep'] * self.ep_weight
 

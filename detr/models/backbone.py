@@ -76,7 +76,7 @@ class BackboneBase(nn.Module):
     def forward(self, tensor):
         xs = self.body(tensor)
         # print("xs: ", xs)
-        print("xs[0]: ", xs['0'].shape)
+        # print("xs[0]: ", xs['0'].shape)
 
         return xs
         # out: Dict[str, NestedTensor] = {}
@@ -111,7 +111,7 @@ class Joiner(nn.Sequential):
         pos = []
         for name, x in xs.items():
             out.append(x)
-            print("Joiner x: ", x.shape)
+            # print("Joiner x: ", x.shape)
 
             # position encoding
             pos.append(self[1](x).to(x.dtype))
