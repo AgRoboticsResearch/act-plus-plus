@@ -152,9 +152,14 @@ class DinoBackbone(nn.Module):
         if model_name == 'vits':
             self.num_channels = 384
             self.num_features = 1369
-        for name, parameter in self.model_backbone.named_parameters():
-            # the dino v2 backbone is not going to be trained
-            parameter.requires_grad_(False)
+        train_backbone = True
+        if not train_backbone:
+            print("[DinoBackbone]: Freezing the backbone")
+            for name, parameter in self.model_backbone.named_parameters():
+                # the dino v2 backbone is not going to be trained
+                parameter.requires_grad_(False)
+        else:
+            print("[DinoBackbone]: Training the backbone")
         self.linear = nn.Linear(self.num_features, 15*25)
 
     def forward(self, x):
