@@ -1235,6 +1235,45 @@ def build(args):
     return model
 
 
+def build_actep(args):
+    state_dim = args.state_dim
+
+    # From state
+    # backbone = None # from state for now, no need for conv nets
+    # From image
+    backbones = []
+    for _ in args.camera_names:
+        backbone = build_backbone(args)
+        backbones.append(backbone)
+
+    transformer = build_transformer(args)
+
+    if args.no_encoder:
+        encoder = None
+    else:
+        encoder = build_encoder(args)
+
+    model = DETRVAE(
+        backbones,
+        transformer,
+        encoder,
+        state_dim=state_dim,
+        num_queries=args.num_queries,
+        camera_names=args.camera_names,
+        vq=args.vq,
+        vq_class=args.vq_class,
+        vq_dim=args.vq_dim,
+        action_dim=args.action_dim,
+    )
+
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("number of parameters: %.2fM" % (n_parameters/1e6,))
+
+    return model
+
+
+
+
 def build_dinoact(args):
     state_dim = args.state_dim
 

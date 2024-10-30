@@ -3,7 +3,7 @@ import os
 
 ### Task parameters
 DATA_DIR = '/mnt/data1/act'
-
+UPI_DATA_DIR = '/mnt/data1/upi'
 TASK_CONFIGS = {
     'act_demo_z1_push_red':{
         'dataset_dir': DATA_DIR + '/act_demo_z1_push_red',
@@ -130,6 +130,12 @@ TASK_CONFIGS = {
         'num_episodes': 100,
         'episode_len': 300,
         'camera_names': ['wrist_down']
+    },
+        'upi_actep':{
+        'dataset_dir': UPI_DATA_DIR + '/lab_sb/rs435i_lab_picking_024-08-29-09-07-12/grip_data_seg',
+        'num_episodes': 100,
+        'episode_len': 100,
+        'camera_names': ['color']
     },
 }
 ### Z1 envs fixed constants
