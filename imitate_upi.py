@@ -161,7 +161,7 @@ def main(args):
                          'vq_class': args['vq_class'],
                          'vq_dim': args['vq_dim'],
                          'action_dim': 7,
-                         'state_dim': 0,
+                         'state_dim': 1,
                          'no_encoder': args['no_encoder'],
                          }
     elif policy_class == 'Diffusion':
@@ -228,6 +228,7 @@ def main(args):
     if policy_class == 'DINOACT':
         resize = (518, 518)
     if policy_class == 'ACTEP':
+        print("chunk_size: ", args['chunk_size'])
         train_dataloader, val_dataloader, stats, _ = load_folderdata(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
     else:
         # train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
@@ -278,7 +279,8 @@ def make_optimizer(policy_class, policy):
         optimizer = policy.configure_optimizers()
     elif policy_class == 'DINOACT':
         optimizer = policy.configure_optimizers()
-
+    elif policy_class == 'ACTEP':
+        optimizer = policy.configure_optimizers()
     else:
         raise NotImplementedError
     return optimizer
@@ -314,6 +316,9 @@ def forward_pass(data, policy):
 def forward_pass_actep(data, policy):
     image_data, action_data, is_pad = data
     image_data, action_data, is_pad = image_data.cuda(), action_data.cuda(), is_pad.cuda()
+    print("image_data: ", image_data.shape)
+    print("action_data: ", action_data.shape)
+    print("is_pad: ", is_pad.shape)
     return policy(image_data, action_data, is_pad)
 
 def forward_pass_epact(data, policy):

@@ -277,11 +277,12 @@ class ACTEPPolicy(nn.Module):
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
+            qpos = torch.zeros(actions.shape[0], 1).to(actions.device)
             # print("image", image.shape)
             # print("qpos", qpos.shape)
             # print("actions", actions.shape)
             # print("is_pad", is_pad.shape)
-            a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(image, env_state, actions, is_pad, vq_sample)
+            a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
             if self.vq or self.model.encoder is None:
                 total_kld = [torch.tensor(0.0)]
             else:

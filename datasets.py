@@ -49,6 +49,8 @@ class EpisodicDatasetRs435i(torch.utils.data.Dataset):
         self.chunk_size = chunk_size
         self.cumulative_len = np.cumsum(self.episode_len)
         self.max_episode_len = max(episode_len)
+        self.max_episode_len = 100
+        print("EpisodicDatasetRs435i max_episode_len: ", self.max_episode_len)
         self.policy_class = policy_class
         self.resize = resize
         if self.policy_class == 'Diffusion':
