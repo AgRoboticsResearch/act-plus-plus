@@ -316,9 +316,6 @@ def forward_pass(data, policy):
 def forward_pass_actep(data, policy):
     image_data, action_data, is_pad = data
     image_data, action_data, is_pad = image_data.cuda(), action_data.cuda(), is_pad.cuda()
-    print("image_data: ", image_data.shape)
-    print("action_data: ", action_data.shape)
-    print("is_pad: ", is_pad.shape)
     return policy(image_data, action_data, is_pad)
 
 def forward_pass_epact(data, policy):
