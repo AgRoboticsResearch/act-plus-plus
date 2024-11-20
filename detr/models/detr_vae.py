@@ -49,6 +49,7 @@ class DETRVAE(nn.Module):
         self.camera_names = camera_names
         self.transformer = transformer
         self.encoder = encoder
+
         self.vq, self.vq_class, self.vq_dim = vq, vq_class, vq_dim
         self.state_dim, self.action_dim = state_dim, action_dim
         hidden_dim = transformer.d_model
@@ -69,8 +70,16 @@ class DETRVAE(nn.Module):
             )
             self.action_head = nn.Linear(middle_dim, action_dim)
         else:
+            # original
             self.action_head = nn.Linear(hidden_dim, action_dim)
-
+            # ------- Debug --------
+            # self.action_head = nn.Sequential(
+            #     nn.Linear(512, hidden_dim),
+            #     nn.ReLU(),  # Add ReLU activation for non-linearity
+            #     nn.Linear(hidden_dim, action_dim),
+            # )
+            # print("action_head:", self.action_head)
+            # ------- Debug --------
 
         self.is_pad_head = nn.Linear(hidden_dim, 1)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -91,7 +100,12 @@ class DETRVAE(nn.Module):
         self.encoder_action_proj = nn.Linear(action_dim, hidden_dim) # project action to embedding
         self.encoder_joint_proj = nn.Linear(state_dim, hidden_dim)  # project qpos to embedding
 
-        print(f'Use VQ: {self.vq}, {self.vq_class}, {self.vq_dim}')
+        print(f'[DETRVAE] Use VQ: {self.vq}, {self.vq_class}, {self.vq_dim}')
+
+        if self.encoder is None:
+            print("[DETRVAE] No encoder")
+        else:
+            print("[DETRVAE] Encoder exists")
         if self.vq:
             self.latent_proj = nn.Linear(hidden_dim, self.vq_class * self.vq_dim)
         else:
@@ -108,7 +122,6 @@ class DETRVAE(nn.Module):
 
     def encode(self, qpos, actions=None, is_pad=None, vq_sample=None):
         bs, _ = qpos.shape
-        # print("encode: qpos shape:", qpos.shape)
         if self.encoder is None:
             latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
             latent_input = self.latent_out_proj(latent_sample)
@@ -197,6 +210,8 @@ class DETRVAE(nn.Module):
                 # print(f"[DETRVAE]: cam_id: {cam_id}, cam_features: {cam_features.shape}, pos: {pos.shape}")
                 all_cam_features.append(cam_features)
                 all_cam_pos.append(pos)
+                # print("[DETRVAE] cam_features:", cam_features.shape)
+
             # proprioception features
             proprio_input = self.input_proj_robot_state(qpos)
             # fold camera dimension into width dimension
@@ -209,6 +224,7 @@ class DETRVAE(nn.Module):
             # print(f"[DETRVAE]: additional_pos_embed: {self.additional_pos_embed.weight.shape}")
             # print(f"[DETRVAE]: query_embed: {self.query_embed.weight.shape}")
             hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight)[0]
+            # print("[DETRVAE] hs:", hs.shape)
         else:
             qpos = self.input_proj_robot_state(qpos)
             env_state = self.input_proj_env_state(env_state)
@@ -1255,7 +1271,7 @@ def build_actep(args):
         backbones.append(backbone)
 
     transformer = build_transformer(args)
-
+    print("args.no_encoder: ", args.no_encoder)
     if args.no_encoder:
         encoder = None
     else:

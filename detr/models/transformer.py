@@ -71,6 +71,9 @@ class Transformer(nn.Module):
 
         tgt = torch.zeros_like(query_embed)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
+        # print(f"[DETRVAE forward]: memory: {memory.shape}")
+        # print(f"[DETRVAE forward]: pos_embed: {pos_embed.shape}")
+
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
         hs = hs.transpose(1, 2)

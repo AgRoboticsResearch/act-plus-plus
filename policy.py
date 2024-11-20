@@ -277,9 +277,9 @@ class ACTEPPolicy(nn.Module):
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
-            qpos = torch.zeros(actions.shape[0], 1).to(actions.device)
+            qpos = torch.zeros(image.shape[0], 1).to(actions.device)
             # print("image", image.shape)
-            # print("qpos", qpos.shape)
+            # print("training qpos", qpos.shape)
             # print("actions", actions.shape)
             # print("is_pad", is_pad.shape)
             a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
@@ -289,14 +289,22 @@ class ACTEPPolicy(nn.Module):
                 total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
             if self.vq:
                 loss_dict['vq_discrepancy'] = F.l1_loss(probs, binaries, reduction='mean')
+            # print("actions", actions)
+            # print("a_hat", a_hat)
             all_l1 = F.l1_loss(actions, a_hat, reduction='none')
+
             l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
             loss_dict['l1'] = l1
             loss_dict['kl'] = total_kld[0]
             loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
+            # loss_dict['loss'] = loss_dict['l1'] 
+
             return loss_dict
         else: # inference time
-            a_hat, _, (_, _), _, _ = self.model(image, env_state, vq_sample=vq_sample) # no action, sample from prior
+            qpos = torch.zeros(image.shape[0], 1).to(image.device)
+            # print("inference qpos", qpos.shape)
+
+            a_hat, _, (_, _), _, _ = self.model(qpos, image, env_state, vq_sample=vq_sample) # no action, sample from prior
             return a_hat
 
     def configure_optimizers(self):

@@ -67,7 +67,7 @@ def main(args):
 
     # fixed parameters
     state_dim = 4
-    lr_backbone = 1e-5
+    # lr_backbone = 1e-5
     backbone = 'resnet18'
     print("policy_class: ", policy_class)
     if policy_class == 'ACT':
@@ -79,7 +79,7 @@ def main(args):
                          'kl_weight': args['kl_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
-                         'lr_backbone': lr_backbone,
+                         'lr_backbone': args['lr_backbone'],
                          'backbone': backbone,
                          'enc_layers': enc_layers,
                          'dec_layers': dec_layers,
@@ -103,7 +103,7 @@ def main(args):
                          'kl_weight': args['kl_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
-                         'lr_backbone': lr_backbone,
+                         'lr_backbone': args['lr_backbone'],
                          'backbone': backbone,
                          'enc_layers': enc_layers,
                          'dec_layers': dec_layers,
@@ -127,7 +127,7 @@ def main(args):
                          'ep_weight': args['ep_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
-                         'lr_backbone': lr_backbone,
+                         'lr_backbone': args['lr_backbone'],
                          'backbone': backbone,
                          'enc_layers': enc_layers,
                          'dec_layers': dec_layers,
@@ -151,7 +151,7 @@ def main(args):
                          'ep_weight': args['ep_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
-                         'lr_backbone': lr_backbone,
+                         'lr_backbone': args['lr_backbone'],
                          'backbone': backbone,
                          'enc_layers': enc_layers,
                          'dec_layers': dec_layers,
@@ -178,7 +178,7 @@ def main(args):
                          'vq': False,
                          }
     elif policy_class == 'CNNMLP':
-        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
+        policy_config = {'lr': args['lr'], 'lr_backbone': args['lr_backbone'], 'backbone' : backbone, 'num_queries': 1,
                          'camera_names': camera_names,}
     else:
         raise NotImplementedError
@@ -387,7 +387,7 @@ def train_bc(train_dataloader, val_dataloader, config):
             # first save then eval
             ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'
             ckpt_path = os.path.join(ckpt_dir, ckpt_name)
-            torch.save(policy.serialize(), ckpt_path)
+            # torch.save(policy.serialize(), ckpt_path)
             # success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
             # wandb.log({'success': success}, step=step)
 
@@ -441,6 +441,8 @@ if __name__ == '__main__':
     parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
     parser.add_argument('--num_steps', action='store', type=int, help='num_steps', required=True)
     parser.add_argument('--lr', action='store', type=float, help='lr', required=True)
+    parser.add_argument('--lr_backbone', action='store', type=float, default=1e-5, help='lr_backbone', required=False)
+
     parser.add_argument('--load_pretrain', action='store_true', default=False)
     parser.add_argument('--eval_every', action='store', type=int, default=10000, help='eval_every', required=False)
     parser.add_argument('--validate_every', action='store', type=int, default=1000, help='validate_every', required=False)

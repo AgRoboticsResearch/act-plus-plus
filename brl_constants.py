@@ -137,6 +137,12 @@ TASK_CONFIGS = {
         'episode_len': 100,
         'camera_names': ['color']
     },
+        'upi_actep_debug':{
+        'dataset_dir': UPI_DATA_DIR + '/lab_sb/rs435i_lab_picking_024-08-29-09-07-12/grip_data_seg_debug',
+        'num_episodes': 100,
+        'episode_len': 50,
+        'camera_names': ['color']
+    },
 }
 ### Z1 envs fixed constants
 DT = 0.033333

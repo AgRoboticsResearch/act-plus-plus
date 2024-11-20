@@ -110,7 +110,7 @@ class EpisodicDatasetRs435i(torch.utils.data.Dataset):
             else:
                 action = action[max(0, start_ts - 1):] # hack, to make timesteps more aligned
                 action_len = episode_len - max(0, start_ts - 1) # hack, to make timesteps more aligned
-
+            # print("action: ", action)
             # self.is_sim = is_sim
             padded_action = np.zeros((self.max_episode_len, original_action_shape[1]), dtype=np.float32)
             padded_action += action[-1] # pad action with last action
@@ -170,7 +170,6 @@ class EpisodicDatasetRs435i(torch.utils.data.Dataset):
             print(e)
             print(f'Error loading {dataset_path} in __getitem__')
             quit()
-
         # print(image_data.dtype, qpos_data.dtype, action_data.dtype, is_pad.dtype)
         return image_data, action_data, is_pad
     
