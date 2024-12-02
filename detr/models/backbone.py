@@ -152,7 +152,7 @@ class DinoBackbone(nn.Module):
         if model_name == 'vits':
             self.num_channels = 384
             self.num_features = 1369
-        train_backbone = True
+        train_backbone = False
         if not train_backbone:
             print("[DinoBackbone]: Freezing the backbone")
             for name, parameter in self.model_backbone.named_parameters():
