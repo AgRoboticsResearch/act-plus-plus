@@ -24,7 +24,7 @@ def flatten_list(l):
     return [item for sublist in l for item in sublist]
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class, resize=None):
+    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class, target_seg_aug=False, resize=None):
         super(EpisodicDataset).__init__()
         self.episode_ids = episode_ids
         self.dataset_path_list = dataset_path_list
@@ -36,6 +36,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.max_episode_len = max(episode_len)
         self.policy_class = policy_class
         self.resize = resize
+        self.target_seg_aug = target_seg_aug
         if self.policy_class == 'Diffusion':
             self.augment_images = True
         else:
@@ -50,6 +51,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
         # self.augment_images = True
         print("augment_images: ", self.augment_images)
+        print("target_seg_aug: ", self.target_seg_aug)
         
         self.transformations = None
         self.__getitem__(0) # initialize self.is_sim and self.transformations
@@ -96,6 +98,14 @@ class EpisodicDataset(torch.utils.data.Dataset):
                     if self.resize is not None:
                         image_dict[cam_name] = cv2.resize(image_dict[cam_name], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
 
+                if self.target_seg_aug:
+                    seg_aug_dataset_path = dataset_path.replace("episode_", "epi_segaug_")
+                    with h5py.File(seg_aug_dataset_path, 'r') as seg_aug_root:
+                        for cam_name in self.camera_names:
+                            cam_name_aug = cam_name + "_seg_aug"
+                            image_dict[cam_name_aug] = seg_aug_root[f'/observations/images_target_seg/{cam_name}'][start_ts]
+
+
                 if compressed:
                     for cam_name in image_dict.keys():
                         decompressed_image = cv2.imdecode(image_dict[cam_name], 1)
@@ -103,8 +113,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
                         if self.resize is not None:
                             image_dict[cam_name] = cv2.resize(image_dict[cam_name], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
 
-
-                
+               
                 # get all actions after and including start_ts
                 if is_sim:
                     action = action[start_ts:]
@@ -130,6 +139,15 @@ class EpisodicDataset(torch.utils.data.Dataset):
                     all_cam_images.append(gary_to_rgb)
                 else:
                     all_cam_images.append(image_dict[cam_name])
+            if self.target_seg_aug:
+                for cam_name in self.camera_names:
+                    cam_name_aug = cam_name + "_seg_aug"
+                    if len(image_dict[cam_name_aug].shape) == 2:
+                        gary_to_rgb = np.dstack([image_dict[cam_name_aug]] * 3) #TODO seg aug should only have 1 channel but only rgb image can use pretrained backbone
+                        all_cam_images.append(gary_to_rgb)
+                    else:
+                        all_cam_images.append(image_dict[cam_name_aug])
+                
             all_cam_images = np.stack(all_cam_images, axis=0)
             
             # get end pose in the current end pose frame (only for EPACT)
