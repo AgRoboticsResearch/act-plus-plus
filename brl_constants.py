@@ -131,6 +131,24 @@ TASK_CONFIGS = {
         'episode_len': 300,
         'camera_names': ['wrist_down']
     },
+        'act_segaug_scara_sim_env':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_sim-env-block-pick',
+        'num_episodes': 400,
+        'episode_len': 300,
+        'camera_names': ['wrist', 'wrist_down', 'wrist_segaug', 'wrist_down_segaug']
+    },
+        'act_segaug_scara_sim_env_wrist':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_sim-env-block-pick',
+        'num_episodes': 100,
+        'episode_len': 300,
+        'camera_names': ['wrist', 'wrist_segaug']
+    },
+        'act_segaug_scara_sim_env_wrist_down':{
+        'dataset_dir': DATA_DIR + '/train_act_scara_sim-env-block-pick',
+        'num_episodes': 100,
+        'episode_len': 300,
+        'camera_names': ['wrist_down', 'wrist_down_segaug']
+    },
         'upi_actep':{
         'dataset_dir': UPI_DATA_DIR + '/lab_sb/rs435i_lab_picking_024-08-29-09-07-12/grip_data_seg',
         'num_episodes': 100,

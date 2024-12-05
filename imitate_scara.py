@@ -50,6 +50,8 @@ def main(args):
     validate_every = args['validate_every']
     save_every = args['save_every']
     resume_ckpt_path = args['resume_ckpt_path']
+    target_seg_aug = args['target_seg_aug']
+    print("target_seg_aug: ", target_seg_aug)
 
     # get task parameters
     is_sim = False
@@ -185,6 +187,7 @@ def main(args):
         'real_robot': not is_sim,
         'load_pretrain': args['load_pretrain'],
         'actuator_config': actuator_config,
+        'target_seg_aug': target_seg_aug,
     }
     seed = config['seed']
 
@@ -203,7 +206,7 @@ def main(args):
     if policy_class == 'DINOACT':
         resize = (518, 518)
     # train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
-    train_dataloader, val_dataloader, stats, _ = load_data_fix_val(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, seed=seed)
+    train_dataloader, val_dataloader, stats, _ = load_data_fix_val(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio, resize=resize, target_seg_aug=target_seg_aug, seed=seed)
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
@@ -422,7 +425,8 @@ if __name__ == '__main__':
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
     parser.add_argument('--no_encoder', action='store_true')
-    
+    parser.add_argument('--target_seg_aug', action='store_true')
+
     # for EPACt
     parser.add_argument('--ep_weight', action='store', type=float, help='EP Weight', required=False)
 

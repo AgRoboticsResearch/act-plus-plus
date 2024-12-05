@@ -93,7 +93,9 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 if '/observations/qvel' in root:
                     qvel = root['/observations/qvel'][start_ts]
                 image_dict = dict()
-                for cam_name in self.camera_names:
+                for cam_name in self.camera_names: 
+                    if "_segaug"  in cam_name:
+                        continue
                     image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
                     if self.resize is not None:
                         image_dict[cam_name] = cv2.resize(image_dict[cam_name], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
@@ -101,9 +103,13 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 if self.target_seg_aug:
                     seg_aug_dataset_path = dataset_path.replace("episode_", "epi_segaug_")
                     with h5py.File(seg_aug_dataset_path, 'r') as seg_aug_root:
-                        for cam_name in self.camera_names:
-                            cam_name_aug = cam_name + "_seg_aug"
-                            image_dict[cam_name_aug] = seg_aug_root[f'/observations/images_target_seg/{cam_name}'][start_ts]
+                        for cam_name_seg in self.camera_names:
+                            if "_segaug" not in cam_name_seg:
+                                continue
+                            cam_name = cam_name_seg.replace("_segaug", "")
+                            image_dict[cam_name_seg] = seg_aug_root[f'/observations/images_target_seg/{cam_name}'][start_ts]
+                            if self.resize is not None:
+                                image_dict[cam_name_seg] = cv2.resize(image_dict[cam_name_seg], (self.resize[0], self.resize[1]), interpolation=cv2.INTER_LINEAR)
 
 
                 if compressed:
@@ -139,14 +145,6 @@ class EpisodicDataset(torch.utils.data.Dataset):
                     all_cam_images.append(gary_to_rgb)
                 else:
                     all_cam_images.append(image_dict[cam_name])
-            if self.target_seg_aug:
-                for cam_name in self.camera_names:
-                    cam_name_aug = cam_name + "_seg_aug"
-                    if len(image_dict[cam_name_aug].shape) == 2:
-                        gary_to_rgb = np.dstack([image_dict[cam_name_aug]] * 3) #TODO seg aug should only have 1 channel but only rgb image can use pretrained backbone
-                        all_cam_images.append(gary_to_rgb)
-                    else:
-                        all_cam_images.append(image_dict[cam_name_aug])
                 
             all_cam_images = np.stack(all_cam_images, axis=0)
             
@@ -263,6 +261,7 @@ def find_all_hdf5(dataset_dir, skip_mirrored_data):
     hdf5_files = []
     for root, dirs, files in os.walk(dataset_dir, followlinks=True):
         for filename in fnmatch.filter(files, '*.hdf5'):
+            if '_segaug' in filename: continue
             if 'features' in filename: continue
             if skip_mirrored_data and 'mirror' in filename:
                 continue
@@ -281,7 +280,7 @@ def BatchSampler(batch_size, episode_len_l, sample_weights):
             batch.append(step_idx)
         yield batch
 
-def load_data_fix_val(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None, stats_dir_l=None, sample_weights=None, train_ratio=0.99, resize=None, seed=0):
+def load_data_fix_val(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None, stats_dir_l=None, sample_weights=None, train_ratio=0.99, resize=None, target_seg_aug=False, seed=0):
     np.random.seed(seed)
 
     if type(dataset_dir_l) == str:
@@ -341,8 +340,8 @@ def load_data_fix_val(dataset_dir_l, name_filter, camera_names, batch_size_train
     for id in val_episode_ids:
         print("val data: ", dataset_path_list[id])
     # construct dataset and dataloader
-    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class, resize=resize)
-    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class, resize=resize)
+    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class, target_seg_aug=target_seg_aug, resize=resize)
+    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class, target_seg_aug=target_seg_aug, resize=resize)
     train_num_workers = (8 if os.getlogin() == 'zfu' else 16) if train_dataset.augment_images else 8
     val_num_workers = 8 if train_dataset.augment_images else 8
     print(f'Augment images: {train_dataset.augment_images}, train_num_workers: {train_num_workers}, val_num_workers: {val_num_workers}')
