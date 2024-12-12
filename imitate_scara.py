@@ -125,6 +125,7 @@ def main(args):
                          'num_queries': args['chunk_size'],
                          'kl_weight': args['kl_weight'],
                          'ep_weight': args['ep_weight'],
+                         'eff_independent': args['eff_independent'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
                          'lr_backbone': lr_backbone,
@@ -138,7 +139,6 @@ def main(args):
                          'vq_dim': args['vq_dim'],
                          'action_dim': 5,
                          'state_dim': 4,
-
                          'no_encoder': args['no_encoder'],
                          }
     elif policy_class == 'Diffusion':
@@ -429,6 +429,8 @@ if __name__ == '__main__':
 
     # for EPACt
     parser.add_argument('--ep_weight', action='store', type=float, help='EP Weight', required=False)
+    parser.add_argument('--eff_independent', action='store_true')
+
 
 
     main(vars(parser.parse_args()))

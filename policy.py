@@ -389,12 +389,21 @@ class DINOPolicy(nn.Module):
 class EPACTPolicy(nn.Module):
     def __init__(self, args_override):
         super().__init__()
+        try:
+            self.eff_independent = args_override['eff_independent']
+        except KeyError:
+            print("Eff independent not set, defaulting to False")
+            self.eff_independent = False
+            args_override['eff_independent'] = self.eff_independent
+        print("EPACTPolicy eff independent", self.eff_independent)
+
         model, optimizer = build_EPACT_model_and_optimizer(args_override)
         self.model = model # CVAE decoder
         self.optimizer = optimizer
         self.kl_weight = args_override['kl_weight']
         self.ep_weight = args_override['ep_weight']
         print("EPACTPolicy ep_weight", self.ep_weight)
+
         self.vq = args_override['vq']
         print(f'KL Weight {self.kl_weight}')
 
