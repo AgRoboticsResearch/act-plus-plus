@@ -14,8 +14,8 @@ from typing import Dict, List
 
 from util.misc import NestedTensor, is_main_process
 
-from models.position_encoding import build_position_encoding
-from models.dinov2.dinov2 import DINOv2
+from .position_encoding import build_position_encoding
+from .dinov2.dinov2 import DINOv2
 
 import IPython
 e = IPython.embed
