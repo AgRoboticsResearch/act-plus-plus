@@ -578,6 +578,32 @@ def get_camera_in_world_and_init(ee_poses_raw, init_states=None):
     ee_in_init_all = np.asarray(ee_in_init_all)
     return  ee_in_init_all_pos, ee_in_world_all_pos, ee_in_init_all
 
+def get_camera_in_world_and_init_samedim(ee_poses_raw, init_states=None):
+    transformation_matrix, rot_mat_ext, translation_mat= trans.kdl_frame_to_mat(ee_poses_raw[0])
+    ee_in_world_init = transformation_matrix
+    world_T_init = np.linalg.inv(ee_in_world_init)
+
+    ee_in_world_all = []
+    ee_in_init_all = []
+    ee_in_init_all_pos = []
+    ee_in_world_all_pos = []
+    for idx, ee_pose in enumerate(ee_poses_raw):
+        # if idx == 0:
+        #     continue
+        ee_in_world_all_pos.append([ee_pose.p[0], ee_pose.p[1], ee_pose.p[2], 1])
+        ee_in_world, _, _= trans.kdl_frame_to_mat(ee_pose)
+        ee_in_world_all.append(ee_in_world)
+        ee_in_init = world_T_init.dot(ee_in_world)
+        ee_in_init_all.append(ee_in_init)
+        ee_in_init_all_pos.append(ee_in_init[:3, 3])
+        
+        # print("ee rpy: ", tf.euler_from_matrix(ee_in_init, 'rxyz'))
+
+    ee_in_init_all_pos = np.asarray(ee_in_init_all_pos)
+    ee_in_world_all_pos = np.asarray(ee_in_world_all_pos)
+    ee_in_init_all = np.asarray(ee_in_init_all)
+    return  ee_in_init_all_pos, ee_in_world_all_pos, ee_in_init_all
+
 def batch_transform_to_xyzyrp_transformations(batch_transform):
     """
     Converts a batch of transformation matrices (65, 4, 4) to a batch of (x, y, z, roll, pitch, yaw) (65, 6) using transformations library.
